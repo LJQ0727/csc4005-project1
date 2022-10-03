@@ -2,3 +2,4 @@
 !*.cpp
 !*.md
 !.gitignore
+!Makefile
