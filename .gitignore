@@ -1,5 +1,3 @@
 *
-!*.cpp
-!*.md
-!.gitignore
-!Makefile
+!*.*
+test_data
