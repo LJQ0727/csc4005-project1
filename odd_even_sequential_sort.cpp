@@ -52,7 +52,7 @@ int main (int argc, char **argv){
                 // In odd iteration, do even-odd exchange
 
                 // For each even index item, compare with its preceding item and do sort among them
-                for (int k = 0; k < num_elements; k += 2) {
+                for (int k = 2; k < num_elements; k += 2) {
                     if (elements[k] < elements[k-1]) {
                         // Do swap when the two are not in ascending order
                         int tmp = elements[k];

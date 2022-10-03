@@ -1,7 +1,16 @@
-num_elems := 10000
+num_elems := 10
+num_procs := 4
 
-default: sequential
+default: parallel
 
+# ------ Parallel -------
+parallel: psort
+	mpirun -np $(num_procs) ./psort $(num_elems) ./test_data/$(num_elems)a.in
+
+psort: odd_even_parallel_sort.cpp
+	mpic++ odd_even_parallel_sort.cpp -o psort
+
+# ------ Sequential --------
 sequential: ssort
 	./ssort $(num_elems) ./test_data/$(num_elems)a.in
 
