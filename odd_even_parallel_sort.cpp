@@ -4,12 +4,13 @@
 #include <iostream>
 #include <chrono>
 
+using namespace std;
 // A helper function that determines whether the input number is even
 inline bool is_even(int num) {
     return (num % 2) == 0;
 }
 
-int main (int argc, char **argv){
+int main (int argc, char **argv) {
 
     MPI_Init(&argc, &argv); 
 
@@ -52,11 +53,12 @@ int main (int argc, char **argv){
     */
    // within each process
     int num_my_element = num_elements / world_size; // number of elements allocated to each process
-    // For the last node, there may be different elements than others
+    // For the last node, there can be different elements than others
     if (rank == world_size-1) {
-        num_my_element = num_elements - world_size * num_my_element;
+        num_my_element = num_elements - (world_size-1) * num_my_element;
     }
     int my_element[num_my_element]; // store elements of each process
+    // cout << num_my_element << " in proc" << rank << endl;
 
     // Distribute the array to nodes
     // here we change from scatter to scatterv, which allows variable size, 
@@ -67,7 +69,7 @@ int main (int argc, char **argv){
         for (int i = 0; i < world_size-1; i++) {
             counts_send[i] = num_my_element;
         }
-        counts_send[world_size-1] = num_elements - world_size * num_my_element;
+        counts_send[world_size-1] = num_elements - (world_size-1) * num_my_element;
 
         int displacements[world_size];
         for (int i = 0; i < world_size; i++) {
@@ -88,103 +90,139 @@ int main (int argc, char **argv){
     bool is_last_elem_odd = (rank * (num_elements / world_size) + num_my_element - 1) % 2;
     int first_odd_index = is_first_elem_odd ? 0 : 1;
     int first_even_index = is_first_elem_odd ? 1 : 0;
-
+    // cout << rank << "  " << is_first_elem_odd << "  " << is_last_elem_odd << "  " << first_even_index<< endl; 
+    // for (int i = 0; i < num_my_element; i++) {
+    //     cout << my_element[i] << endl;
+    // }
     for (int iter = 0; iter < num_elements; iter++) {  // in total need to perform n times to finish the sorting
-        for (int i = 0; i < num_my_element; i++) {    // inside each iteration, in each process
-            MPI_Request send_request;   // request buffer for Isend
-            MPI_Request recv_request;   // request buffer for Irecv
-            int recv_buffer;    // Stores the received int
-            int send_buffer;    // 
-            if (is_even(i)) {
-                // In even iteration, do odd-even exchange
-                // For each (global) odd index item, compare with its preceding item and do sort among these 2
+        MPI_Request send_request;   // request buffer for Isend
+        MPI_Request recv_request;   // request buffer for Irecv
+        int recv_buffer;    // Stores the received int
+        int send_buffer;    // 
+        if (is_even(iter)) {
+            int internal_start_idx = first_odd_index;
+            // In even iteration, do odd-even exchange
+            // For each (global) odd index item, compare with its preceding item and do sort among these 2
 
-                // If the first element is (globally) odd, send the number to the last node if rank != 0
-                if (first_odd_index == 0 && rank != 0) {
-                    // We use the iteration number as tag, so that if send and recv in an iter don't match, there will be a deadlock
-                    MPI_Isend(my_element, 1, MPI_INT, rank-1, iter, MPI_COMM_WORLD, &send_request);
+            // If the first element is (globally) odd, send the number to the last node if rank != 0
+            if (first_odd_index == 0 && rank != 0) {
+                // We use the iteration number as tag, so that if send and recv in an iter don't match, there will be a deadlock
+                MPI_Isend(my_element, 1, MPI_INT, rank-1, iter, MPI_COMM_WORLD, &send_request);
+                cout << rank << " performing isend \n";
+            }
+            if (internal_start_idx == 0) internal_start_idx += 2;
+            // If the last element is (globally) even, receive from next node if it's not the last node
+            if (!is_last_elem_odd && rank != world_size-1) {
+                // We use the iteration number as tag, so that if send and recv in an iter don't match, there will be a deadlock
+                MPI_Irecv(&recv_buffer, 1, MPI_INT, rank+1, iter, MPI_COMM_WORLD, &recv_request);
+                cout << rank << " preparing irecv" << endl;
+            }
+            // Do exchange internally
+            for (int j = internal_start_idx; j < num_my_element; j += 2) {
+                cout << "internal exchange, even\n";
+                // Do swap when the two are not in ascending order
+                if (my_element[j] < my_element[j-1]) {
+                    int tmp = my_element[j];
+                    my_element[j] = my_element[j-1];
+                    my_element[j-1] = tmp;
+                    cout << "exchanging "<< my_element[j-1] << " " << my_element[j] << endl;
                 }
-                // If the last element is (globally) even, receive from next node if it's not the last node
-                if (!is_last_elem_odd && rank != world_size-1) {
-                    // We use the iteration number as tag, so that if send and recv in an iter don't match, there will be a deadlock
-                    MPI_Irecv(&recv_buffer, 1, MPI_INT, rank+1, iter, MPI_COMM_WORLD, &recv_request);
+            }
+            // For the received message, send back the larger element and store the smaller element
+            if (!is_last_elem_odd && rank != world_size-1) {
+                MPI_Wait(&recv_request, MPI_STATUS_IGNORE);
+                // Do comparison
+                if (my_element[num_my_element-1] > recv_buffer) {
+                    send_buffer = my_element[num_my_element-1];
+                    my_element[num_my_element-1] = recv_buffer;
+                } else {
+                    send_buffer = recv_buffer;
                 }
-                // Do exchange internally
-                for (int j = ((first_odd_index==0)?2:1); j < num_my_element; j += 2) {
-                    // Do swap when the two are not in ascending order
-                    if (my_element[j] < my_element[j-1]) {
-                        int tmp = my_element[j];
-                        my_element[j] = my_element[j-1];
-                        my_element[j-1] = tmp;
-                    }
+                MPI_Send(&send_buffer, 1, MPI_INT, rank+1, iter, MPI_COMM_WORLD);
+                // MPI_Isend(&send_buffer, 1, MPI_INT, rank+1, iter, MPI_COMM_WORLD, )
+                // MPI_Irecv(&recv_buffer, 1, MPI_INT, rank+1, iter, MPI_COMM_WORLD, &recv_request);
+            }
+            // Receive the previously sent message, which contains the larger element
+            if (first_odd_index == 0 && rank != 0) {
+                MPI_Wait(&send_request, MPI_STATUS_IGNORE);
+                MPI_Recv(my_element, 1, MPI_INT, rank-1, iter, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            }
+        } else {
+            // In odd iteration, do even-odd exchange
+            int internal_start_idx = first_even_index;
+            // For each (global) even index item, compare with its preceding item and do sort among these 2
+            // If the first element is (globally) even, send the number to the last node if rank != 0
+            if (first_even_index == 0 && rank != 0) {
+                // We use the iteration number as tag, so that if send and recv in an iter don't match, there will be a deadlock
+                MPI_Isend(my_element, 1, MPI_INT, rank-1, iter, MPI_COMM_WORLD, &send_request);
+            }
+            if (internal_start_idx == 0) internal_start_idx += 2;
+            // If the last element is (globally) odd, receive from next node if it's not the last node
+            if (is_last_elem_odd && rank != world_size-1) {
+                // We use the iteration number as tag, so that if send and recv in an iter don't match, there will be a deadlock
+                MPI_Irecv(&recv_buffer, 1, MPI_INT, rank+1, iter, MPI_COMM_WORLD, &recv_request);
+            }
+            // Do exchange internally
+            for (int j = internal_start_idx; j < num_my_element; j += 2) {
+                cout << "internal exchange, odd\n";
+                // Do swap when the two are not in ascending order
+                if (my_element[j] < my_element[j-1]) {
+                    int tmp = my_element[j];
+                    my_element[j] = my_element[j-1];
+                    my_element[j-1] = tmp;
+                    cout << "exchanging "<< my_element[j-1] << " " << my_element[j] << endl;
                 }
-                // For the received message, send back the larger element and store the smaller element
-                if (!is_last_elem_odd && rank != world_size-1) {
-                    MPI_Wait(&recv_request, MPI_STATUS_IGNORE);
-                    // Do comparison
-                    if (my_element[num_my_element-1] > recv_buffer) {
-                        send_buffer = my_element[num_my_element-1];
-                        my_element[num_my_element-1] = recv_buffer;
-                    } else {
-                        send_buffer = recv_buffer;
-                    }
-                    MPI_Send(&send_buffer, 1, MPI_INT, rank+1, iter, MPI_COMM_WORLD);
-                    // MPI_Isend(&send_buffer, 1, MPI_INT, rank+1, iter, MPI_COMM_WORLD, )
-                    // MPI_Irecv(&recv_buffer, 1, MPI_INT, rank+1, iter, MPI_COMM_WORLD, &recv_request);
+            }
+            // For the received message, send back the larger element and store the smaller element
+            if (is_last_elem_odd && rank != world_size-1) {
+                MPI_Wait(&recv_request, MPI_STATUS_IGNORE);
+                // Do comparison
+                if (my_element[num_my_element-1] > recv_buffer) {
+                    send_buffer = my_element[num_my_element-1];
+                    my_element[num_my_element-1] = recv_buffer;
+                } else {
+                    send_buffer = recv_buffer;
                 }
-                // Receive the previously sent message, which contains the larger element
-                if (first_odd_index == 0 && rank != 0) {
-                    MPI_Wait(&send_request, MPI_STATUS_IGNORE);
-                    MPI_Recv(my_element, 1, MPI_INT, rank-1, iter, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                }
-            } else {
-                // In odd iteration, do even-odd exchange
-
-                // Send index 0 to last node for comparison, if rank != 0
-                MPI_Request request;
-                if (rank != 0) {
-                    MPI_Isend(my_element, 1, MPI_INT, rank-1, MPI_ANY_TAG, MPI_COMM_WORLD, &request);
-                }
-                // For each even index item, compare with its preceding item and do sort among them
-                for (int k = 2; k < num_my_element; k += 2) {
-                    if (my_element[k] < my_element[k-1]) {
-                        // Do swap when the two are not in ascending order
-                        int tmp = my_element[k];
-                        my_element[k] = my_element[k-1];
-                        my_element[k-1] = tmp;
-                    }
-                }
-                // For rank != 0, do wait after MPI_Isend
-                if (rank != 0) {
-                    MPI_Wait(&request, MPI_STATUS_IGNORE);
-                }
+                MPI_Send(&send_buffer, 1, MPI_INT, rank+1, iter, MPI_COMM_WORLD);
+                // MPI_Isend(&send_buffer, 1, MPI_INT, rank+1, iter, MPI_COMM_WORLD, )
+                // MPI_Irecv(&recv_buffer, 1, MPI_INT, rank+1, iter, MPI_COMM_WORLD, &recv_request);
+            }
+            // Receive the previously sent message, which contains the larger element
+            if (first_even_index== 0 && rank != 0) {
+                MPI_Wait(&send_request, MPI_STATUS_IGNORE);
+                MPI_Recv(my_element, 1, MPI_INT, rank-1, iter, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             }
         }
     }
-
-    // Here we change to gatherv
+    // Instead of gather, we use gatherv to match scatterv
     if (rank == 0) {
         // For root node, MPI_Gatherv requires some more specifications
         int counts_recv[world_size];
         for (int i = 0; i < world_size-1; i++) {
             counts_recv[i] = num_my_element;
         }
-        counts_recv[world_size-1] = num_elements - world_size * num_my_element;
+        counts_recv[world_size-1] = num_elements - (world_size-1) * num_my_element;
 
         int displacements[world_size];
         for (int i = 0; i < world_size; i++) {
             displacements[i] = i * num_my_element;
         }
-
-        MPI_Gatherv(my_element, num_my_element, MPI_INT, elements, counts_recv, displacements, MPI_INT, 0, MPI_COMM_WORLD);
+        cout << "root performing gatherv\n";
+        MPI_Gatherv(my_element, num_my_element, MPI_INT, sorted_elements, counts_recv, displacements, MPI_INT, 0, MPI_COMM_WORLD);
     } else {
         // For non-root nodes
-        MPI_Gatherv(my_element, num_my_element, MPI_INT, elements, NULL, NULL, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Gatherv(my_element, num_my_element, MPI_INT, sorted_elements, NULL, NULL, MPI_INT, 0, MPI_COMM_WORLD);
     }
     
+
     /* TODO END */
 
     if (rank == 0){ // record time (only executed in master process)
+        // Print out my info
+        printf("Name: Li Jiaqi\n");
+        printf("Student ID: 120090727\n");
+        printf("Assignment 1, Odd-Even Transposition Sort, Parallel Version.\n");
+
         t2 = std::chrono::high_resolution_clock::now();  
         time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
         std::cout << "Run Time: " << time_span.count() << " seconds" << std::endl;
@@ -193,6 +231,7 @@ int main (int argc, char **argv){
     }
 
     if (rank == 0){ // write result to file (only executed in master process)
+        // cout << "writing to " << argv[2]+std::string(".out") << endl;
         std::ofstream output(argv[2]+std::string(".out"), std::ios_base::out);
         for (int i = 0; i < num_elements; i++) {
             output << sorted_elements[i] << std::endl;
