@@ -5,6 +5,8 @@
 #include <chrono>
 
 using namespace std;
+bool print_out_array = true;    // If this is set true, it will print out the input array and the one after sorting
+
 // A helper function that determines whether the input number is even
 inline bool is_even(int num) {
     return (num % 2) == 0;
@@ -36,6 +38,12 @@ int main (int argc, char **argv) {
             i++;
         }
         std::cout << "actual number of elements:" << i << std::endl;
+
+        std::cout << "The input array is: \n[";
+        for (int j = 0; j < i; j++) {
+            std::cout << elements[j] << ", ";
+        }
+        std::cout << "]\n";
     }
 
     std::chrono::high_resolution_clock::time_point t1;
@@ -51,7 +59,7 @@ int main (int argc, char **argv) {
         Replace it with your own code.
         Useful MPI documentation: https://rookiehpc.github.io/mpi/docs
     */
-   // within each process
+
     int num_my_element = num_elements / world_size; // number of elements allocated to each process
     // For the last node, there can be different elements than others
     if (rank == world_size-1) {
@@ -108,24 +116,24 @@ int main (int argc, char **argv) {
             if (first_odd_index == 0 && rank != 0) {
                 // We use the iteration number as tag, so that if send and recv in an iter don't match, there will be a deadlock
                 MPI_Isend(my_element, 1, MPI_INT, rank-1, iter, MPI_COMM_WORLD, &send_request);
-                cout << rank << " performing isend \n";
+                // cout << rank << " performing isend \n";
             }
             if (internal_start_idx == 0) internal_start_idx += 2;
             // If the last element is (globally) even, receive from next node if it's not the last node
             if (!is_last_elem_odd && rank != world_size-1) {
                 // We use the iteration number as tag, so that if send and recv in an iter don't match, there will be a deadlock
                 MPI_Irecv(&recv_buffer, 1, MPI_INT, rank+1, iter, MPI_COMM_WORLD, &recv_request);
-                cout << rank << " preparing irecv" << endl;
+                // cout << rank << " preparing irecv" << endl;
             }
             // Do exchange internally
             for (int j = internal_start_idx; j < num_my_element; j += 2) {
-                cout << "internal exchange, even\n";
+                // cout << "internal exchange, even\n";
                 // Do swap when the two are not in ascending order
                 if (my_element[j] < my_element[j-1]) {
                     int tmp = my_element[j];
                     my_element[j] = my_element[j-1];
                     my_element[j-1] = tmp;
-                    cout << "exchanging "<< my_element[j-1] << " " << my_element[j] << endl;
+                    // cout << "exchanging "<< my_element[j-1] << " " << my_element[j] << endl;
                 }
             }
             // For the received message, send back the larger element and store the smaller element
@@ -146,6 +154,7 @@ int main (int argc, char **argv) {
             if (first_odd_index == 0 && rank != 0) {
                 MPI_Wait(&send_request, MPI_STATUS_IGNORE);
                 MPI_Recv(my_element, 1, MPI_INT, rank-1, iter, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                // cout << rank << " successfully received\n";
             }
         } else {
             // In odd iteration, do even-odd exchange
@@ -155,22 +164,24 @@ int main (int argc, char **argv) {
             if (first_even_index == 0 && rank != 0) {
                 // We use the iteration number as tag, so that if send and recv in an iter don't match, there will be a deadlock
                 MPI_Isend(my_element, 1, MPI_INT, rank-1, iter, MPI_COMM_WORLD, &send_request);
+                // cout << rank << " performing isend \n";
             }
             if (internal_start_idx == 0) internal_start_idx += 2;
             // If the last element is (globally) odd, receive from next node if it's not the last node
             if (is_last_elem_odd && rank != world_size-1) {
                 // We use the iteration number as tag, so that if send and recv in an iter don't match, there will be a deadlock
                 MPI_Irecv(&recv_buffer, 1, MPI_INT, rank+1, iter, MPI_COMM_WORLD, &recv_request);
+                // cout << rank << " performing irecv \n";
             }
             // Do exchange internally
             for (int j = internal_start_idx; j < num_my_element; j += 2) {
-                cout << "internal exchange, odd\n";
+                // cout << "internal exchange, odd\n";
                 // Do swap when the two are not in ascending order
                 if (my_element[j] < my_element[j-1]) {
                     int tmp = my_element[j];
                     my_element[j] = my_element[j-1];
                     my_element[j-1] = tmp;
-                    cout << "exchanging "<< my_element[j-1] << " " << my_element[j] << endl;
+                    // cout << "exchanging "<< my_element[j-1] << " " << my_element[j] << endl;
                 }
             }
             // For the received message, send back the larger element and store the smaller element
@@ -191,6 +202,7 @@ int main (int argc, char **argv) {
             if (first_even_index== 0 && rank != 0) {
                 MPI_Wait(&send_request, MPI_STATUS_IGNORE);
                 MPI_Recv(my_element, 1, MPI_INT, rank-1, iter, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                // cout << rank << " successfully received\n";
             }
         }
     }
@@ -207,7 +219,7 @@ int main (int argc, char **argv) {
         for (int i = 0; i < world_size; i++) {
             displacements[i] = i * num_my_element;
         }
-        cout << "root performing gatherv\n";
+        // cout << "root performing gatherv\n";
         MPI_Gatherv(my_element, num_my_element, MPI_INT, sorted_elements, counts_recv, displacements, MPI_INT, 0, MPI_COMM_WORLD);
     } else {
         // For non-root nodes
@@ -221,13 +233,19 @@ int main (int argc, char **argv) {
         // Print out my info
         printf("Name: Li Jiaqi\n");
         printf("Student ID: 120090727\n");
-        printf("Assignment 1, Odd-Even Transposition Sort, Parallel Version.\n");
+        printf("Assignment 1, Odd-Even Transposition Sort, Parallel Version with MPI.\n");
 
         t2 = std::chrono::high_resolution_clock::now();  
         time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
         std::cout << "Run Time: " << time_span.count() << " seconds" << std::endl;
         std::cout << "Input Size: " << num_elements << std::endl;
         std::cout << "Process Number: " << world_size << std::endl;   
+        std::cout << "The sorted array is: \n[";
+        for (int j = 0; j < num_elements; j++) {
+            std::cout << elements[j] << ", ";
+        }
+        std::cout << "]\n";
+
     }
 
     if (rank == 0){ // write result to file (only executed in master process)
