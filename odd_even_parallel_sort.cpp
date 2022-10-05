@@ -219,13 +219,16 @@ int main (int argc, char **argv) {
             displacements[i] = i * num_my_element;
         }
         // cout << "root performing gatherv\n";
-        MPI_Gatherv(my_element, num_my_element, MPI_INT, sorted_elements, counts_recv, displacements, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Gatherv(my_element, num_my_element, MPI_INT, elements, counts_recv, displacements, MPI_INT, 0, MPI_COMM_WORLD);
     } else {
         // For non-root nodes
-        MPI_Gatherv(my_element, num_my_element, MPI_INT, sorted_elements, NULL, NULL, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Gatherv(my_element, num_my_element, MPI_INT, elements, NULL, NULL, MPI_INT, 0, MPI_COMM_WORLD);
     }
     
-
+    for (int i = 0; i < num_elements; i++) {
+        sorted_elements[i] = elements[i];
+    }
+    
     /* TODO END */
 
     if (rank == 0){ // record time (only executed in master process)
