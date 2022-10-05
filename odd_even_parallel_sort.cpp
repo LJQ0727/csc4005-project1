@@ -98,15 +98,12 @@ int main (int argc, char **argv) {
     bool is_last_elem_odd = (rank * (num_elements / world_size) + num_my_element - 1) % 2;
     int first_odd_index = is_first_elem_odd ? 0 : 1;
     int first_even_index = is_first_elem_odd ? 1 : 0;
-    // cout << rank << "  " << is_first_elem_odd << "  " << is_last_elem_odd << "  " << first_even_index<< endl; 
-    // for (int i = 0; i < num_my_element; i++) {
-    //     cout << my_element[i] << endl;
-    // }
+
     for (int iter = 0; iter < num_elements; iter++) {  // in total need to perform n times to finish the sorting
         MPI_Request send_request;   // request buffer for Isend
         MPI_Request recv_request;   // request buffer for Irecv
         int recv_buffer;    // Stores the received int
-        int send_buffer;    // 
+        int send_buffer;    // buffer for send (not Isend, Isend directly uses the array address)
         if (is_even(iter)) {
             int internal_start_idx = first_odd_index;
             // In even iteration, do odd-even exchange
