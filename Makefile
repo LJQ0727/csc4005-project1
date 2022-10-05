@@ -1,4 +1,4 @@
-num_elems := 20
+num_elems := 10000
 num_procs := 4
 
 default: parallel
@@ -15,7 +15,7 @@ sequential: ssort
 	./ssort $(num_elems) ./test_data/$(num_elems)a.in
 
 ssort: odd_even_sequential_sort.cpp
-	g++ -g odd_even_sequential_sort.cpp -o ssort
+	g++ odd_even_sequential_sort.cpp -o ssort
 
 generate:
 	./gen $(num_elems) ./test_data/$(num_elems)a.in
@@ -23,3 +23,4 @@ generate:
 
 test: 
 	./check $(num_elems) ./test_data/$(num_elems)a.in.out
+	echo ---------------------

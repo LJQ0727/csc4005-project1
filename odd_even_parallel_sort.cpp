@@ -5,7 +5,7 @@
 #include <chrono>
 
 using namespace std;
-bool print_out_array = true;    // If this is set true, it will print out the input array and the one after sorting
+bool print_out_array = false;    // If this is set true, it will print out the input array and the one after sorting
 
 // A helper function that determines whether the input number is even
 inline bool is_even(int num) {
@@ -39,11 +39,13 @@ int main (int argc, char **argv) {
         }
         std::cout << "actual number of elements:" << i << std::endl;
 
-        std::cout << "The input array is: \n[";
-        for (int j = 0; j < i; j++) {
-            std::cout << elements[j] << ", ";
+        if (print_out_array) {
+            std::cout << "The input array is: \n[";
+            for (int j = 0; j < i; j++) {
+                std::cout << elements[j] << ", ";
+            }
+            std::cout << "]\n";
         }
-        std::cout << "]\n";
     }
 
     std::chrono::high_resolution_clock::time_point t1;
@@ -236,13 +238,15 @@ int main (int argc, char **argv) {
         time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
         std::cout << "Run Time: " << time_span.count() << " seconds" << std::endl;
         std::cout << "Input Size: " << num_elements << std::endl;
-        std::cout << "Process Number: " << world_size << std::endl;   
-        std::cout << "The sorted array is: \n[";
-        for (int j = 0; j < num_elements; j++) {
-            std::cout << elements[j] << ", ";
-        }
-        std::cout << "]\n";
-
+        std::cout << "Process Number: " << world_size << std::endl; 
+        if (print_out_array) {
+            std::cout << "The sorted array is: \n[";
+            for (int j = 0; j < num_elements; j++) {
+                std::cout << elements[j] << ", ";
+            }
+            std::cout << "]\n";
+        }  
+        std::cout << " \n";
     }
 
     if (rank == 0){ // write result to file (only executed in master process)
