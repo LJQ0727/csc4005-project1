@@ -91,8 +91,6 @@ int main (int argc, char **argv) {
         MPI_Scatterv(NULL, NULL, NULL, MPI_INT, my_element, num_my_element, MPI_INT, 0, MPI_COMM_WORLD);
     }
 
-    // printf("I am process %d, I have %d elements\n", rank, num_my_element);
-    // use `num_my_element` and `my_element`
     // BEGIN SORTING --------
 
     // Determine the **global** index of the first element is odd or even
@@ -101,7 +99,7 @@ int main (int argc, char **argv) {
     int first_odd_index = is_first_elem_odd ? 0 : 1;
     int first_even_index = is_first_elem_odd ? 1 : 0;
 
-    for (int iter = 0; iter < num_elements; iter++) {  // in total need to perform n times to finish the sorting
+    for (int iter = 0; iter < num_elements; iter++) {
         MPI_Request send_request;   // request buffer for Isend
         MPI_Request recv_request;   // request buffer for Irecv
         int recv_buffer;    // Stores the received int
