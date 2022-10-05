@@ -31,33 +31,30 @@ int main (int argc, char **argv){
     t1 = std::chrono::high_resolution_clock::now(); // record time
 
     /* TODO BEGIN */
-   // The array is stored in `elements`
-    for (int iter = 0; iter < num_elements; iter++) {  // in total need to perform n times to finish the sorting
-        // Determine whether the iteration number is odd or even
-        // We assume iteration number starts from 0
-        if (is_even(iter)) {
-            // In even iteration, do odd-even exchange
-
-            // For each odd index item, compare with its preceding item and do sort among these 2
-            for (int j = 1; j < num_elements; j += 2) {
-                if (elements[j] < elements[j-1]) {
-                    // Do swap when the two are not in ascending order
-                    int tmp = elements[j];
-                    elements[j] = elements[j-1];
-                    elements[j-1] = tmp;
-                }
+    // The array is stored in `elements`
+    bool is_sorted = false;
+    while (!is_sorted) {  // in total need to perform n times to finish the sorting
+        //Perform odd-even exchange
+        is_sorted = true;
+        // For each odd index item, compare with its preceding item and do sort among these 2
+        for (int j = 1; j < num_elements; j += 2) {
+            if (elements[j] < elements[j-1]) {
+                // Do swap when the two are not in ascending order
+                int tmp = elements[j];
+                elements[j] = elements[j-1];
+                elements[j-1] = tmp;
+                is_sorted = false;
             }
-        } else {
-            // In odd iteration, do even-odd exchange
-
-            // For each even index item, compare with its preceding item and do sort among them
-            for (int k = 2; k < num_elements; k += 2) {
-                if (elements[k] < elements[k-1]) {
-                    // Do swap when the two are not in ascending order
-                    int tmp = elements[k];
-                    elements[k] = elements[k-1];
-                    elements[k-1] = tmp;
-                }
+        }
+        // Perform even-odd exchange
+        // For each even index item, compare with its preceding item and do sort among them
+        for (int k = 2; k < num_elements; k += 2) {
+            if (elements[k] < elements[k-1]) {
+                // Do swap when the two are not in ascending order
+                int tmp = elements[k];
+                elements[k] = elements[k-1];
+                elements[k-1] = tmp;
+                is_sorted = false;
             }
         }
     }
