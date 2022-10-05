@@ -7,6 +7,7 @@
 inline bool is_even(int num) {
     return (num % 2) == 0;
 }
+bool print_out_array = false;    // If this is set true, it will print out the input array and the one after sorting
 
 int main (int argc, char **argv){
 
@@ -24,6 +25,14 @@ int main (int argc, char **argv){
         i++;
     }
     std::cout << "actual number of elements:" << i << std::endl;
+    if (print_out_array) {
+        std::cout << "The input array is: \n[";
+        for (int j = 0; j < i; j++) {
+            std::cout << elements[j] << ", ";
+        }
+        std::cout << "]\n";
+    }
+
 
     std::chrono::high_resolution_clock::time_point t1;
     std::chrono::high_resolution_clock::time_point t2;
@@ -73,7 +82,16 @@ int main (int argc, char **argv){
     std::cout << "Run Time: " << time_span.count() << " seconds" << std::endl;
     std::cout << "Input Size: " << num_elements << std::endl;
     std::cout << "Process Number: " << 1 << std::endl;   
+    if (print_out_array) {
+        std::cout << "The sorted array is: \n[";
+        for (int j = 0; j < num_elements; j++) {
+            std::cout << elements[j] << ", ";
+        }
+        std::cout << "]\n";
+    }  
+    std::cout << " \n";
     
+
     std::ofstream output(argv[2]+std::string(".out"), std::ios_base::out);
     for (int i = 0; i < num_elements; i++) {
         output << sorted_elements[i] << std::endl;
